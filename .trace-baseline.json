@@ -1,0 +1,8 @@
+{
+  "note": "Пишется только gates/trace-check.mjs. Правка руками запрещена (docs/RULES.md §7).",
+  "generated_at": "2026-09-07T01:08:29.501Z",
+  "total": 66,
+  "violations": 0,
+  "untested": 0,
+  "items": []
+}

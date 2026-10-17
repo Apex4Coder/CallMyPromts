@@ -1,0 +1,113 @@
+# UI geometry contract — machine-readable screen layouts
+#
+# Requirement: REQ-UI-GEOMETRY (docs/SPEC.md §14).
+#
+# This is the first screen contract. It intentionally describes the current Prompt
+# Deck DOM, not a hypothetical dashboard: every region has a stable selector, a
+# measurable layout rule, and an assertion. A screen without a contract is a red
+# test, not an invitation for the implementer to guess.
+#
+# Vocabulary is fixed in docs/SPEC.md §14:
+#   row        = equal boundingBox.y within 1px
+#   single_row = all declared children share one row
+#   no_overflow = no hidden/clip container has scrollWidth/scrollHeight overflow
+#   tap_target = interactive target is at least 32px high
+#
+# The parser accepts the flat YAML subset used by contracts/yaml.mjs. Lists are
+# inline; nested objects are represented as dotted scalar keys where needed.
+
+screens:
+  - id: picker
+    root: "#stagePicker"
+    regions: [picker-head, picker-list, picker-preview, picker-empty, picker-hints]
+    assertions: [page_no_horizontal_scroll, root_in_viewport]
+  - id: clips
+    root: "#clips"
+    regions: [clips-head, clips-list, clips-empty]
+    assertions: [page_no_horizontal_scroll, root_in_viewport]
+  - id: deck
+    root: "#deck"
+    regions: [deck-nav, deck-main]
+    assertions: [page_no_horizontal_scroll, root_in_viewport]
+
+regions:
+  - id: picker-head
+    selector: "#pickerHead"
+    component: Toolbar
+    layout.direction: row
+    layout.wrap: false
+    layout.gap: 8
+    assertions: [no_overflow, interactive_targets]
+  - id: picker-list
+    selector: "#pickerList"
+    component: DataList
+    layout.direction: column
+    layout.wrap: false
+    assertions: [no_overflow]
+  - id: picker-preview
+    selector: "#pickerPreview"
+    component: Preview
+    assertions: [no_overflow, in_viewport_when_visible]
+  - id: picker-empty
+    selector: "#pickerEmpty"
+    component: EmptyState
+    assertions: [nonzero_layout_when_visible, no_overflow]
+  - id: picker-hints
+    selector: "#pickerHints"
+    component: HintBar
+    layout.direction: row
+    layout.wrap: false
+    assertions: [no_overflow]
+  - id: clips-head
+    selector: "#clipsHead"
+    component: Toolbar
+    layout.direction: row
+    layout.wrap: false
+    layout.gap: 8
+    assertions: [no_overflow, interactive_targets]
+  - id: clips-list
+    selector: "#clipsList"
+    component: DataList
+    layout.direction: column
+    layout.wrap: false
+    assertions: [no_overflow]
+  - id: clips-empty
+    selector: "#clipsEmpty"
+    component: EmptyState
+    assertions: [nonzero_layout_when_visible, no_overflow]
+  - id: deck-nav
+    selector: "#deckNav"
+    component: Navigation
+    layout.direction: column
+    assertions: [no_overflow, interactive_targets]
+  - id: deck-main
+    selector: "#deckMain"
+    component: SettingsPanel
+    assertions: [no_overflow, page_no_horizontal_scroll]
+
+components:
+  - id: Toolbar
+    primitives: [Button, SearchField]
+    assertions: [labels_not_truncated, interactive_targets]
+  - id: DataList
+    primitives: [ListRow]
+    assertions: [no_overflow, no_technical_text]
+  - id: EmptyState
+    primitives: [StateChip]
+    assertions: [nonzero_layout_when_visible, reason_and_action]
+  - id: SettingsPanel
+    primitives: [Field, Button, StateChip]
+    assertions: [no_overflow, interactive_targets]
+
+matrix:
+  widths: [800, 1280, 1920]
+  heights: [600, 800, 1080]
+  volumes: [0, 20, 200]
+  themes: [light, dark]
+  test_file: tests/e2e/geo-matrix.spec.mjs
+  cells: 42
+
+freeze:
+  file: tests/e2e/freeze.spec.mjs
+  required_cases: 20
+  rule: "any regression blocks merge even when the new feature works"

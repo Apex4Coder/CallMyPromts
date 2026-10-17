@@ -1,0 +1,398 @@
+<!doctype html>
+<!--
+  ui/index.html — единственная страница приложения.
+
+  Требования: REQ-UI-LAYOUT, REQ-UI-THEME, REQ-UI-A11Y (docs/SPEC.md §7).
+  Контракт DOM-id: docs/UI-SPEC.md §3 — изменение id меняет контракт и ломает E2E.
+
+  Атрибуты на <html> задают вариант оформления: раскладка, тема, движение, акцент,
+  плотность, позиция. Скрипт подставляет их из настроек; CSS делает всё остальное.
+  Значения по умолчанию стоят прямо здесь, поэтому страница выглядит правильно
+  ещё до ответа сервера.
+
+  Поля настроек здесь НЕ перечислены. Их единственное описание — ui/views/fields.js,
+  оттуда строится разметка. Два списка одних и тех же полей означали бы два мнения
+  о настройках (docs/RULES.md §1).
+
+  Токен приходит в <meta name="deck-token">: сервер подставляет его при отдаче
+  страницы, потому что браузер не имеет доступа к файловой системе и не может
+  прочитать state/token сам (docs/DATA-CONTRACTS.md §5).
+
+  Именно meta, а не встроенный <script>. Политика безопасности запрещает
+  выполнение встроенных скриптов (`script-src 'self'` в server/http.mjs), и это
+  правило нужное: содержимое промптов попадает в страницу, а значит подстановка
+  скрипта через текст файла не должна выполняться. Встроенный <script> с токеном
+  просто не запускался: токена в странице не было, и КАЖДЫЙ запрос к API получал
+  401 «нет заголовка x-deck-token». Ослаблять политику ради одной строки нельзя,
+  поэтому в разметке не осталось ни встроенных скриптов, ни встроенных стилей.
+-->
+<html
+  lang="ru"
+  data-layout="hybrid"
+  data-theme="light"
+  data-motion="full"
+  data-accent="teal"
+  data-density="compact"
+  data-position="cursor"
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Пустая data-иконка исключает бесполезный запрос /favicon.ico и ошибку 404. -->
+    <link rel="icon" href="data:," />
+    <meta name="deck-token" content="__DECK_TOKEN__" />
+    <title>CallMyPromts</title>
+    <link rel="stylesheet" href="/styles/tokens.css" />
+    <link rel="stylesheet" href="/styles/layouts.css" />
+    <link rel="stylesheet" href="/styles/motion.css" />
+    <link rel="stylesheet" href="/styles/paper.css" />
+    <link rel="stylesheet" href="/styles/paper-panels.css" />
+  </head>
+  <body>
+    <section id="crm" aria-label="Мини-CRM" hidden>
+      <header class="crm-chrome"><strong>▦ &nbsp; CallMyPromts</strong><small>Paper</small></header>
+      <nav class="crm-rail" aria-label="Навигационная рельса">
+        <button
+          type="button"
+          id="crmDrawerToggle"
+          title="Библиотека и группы"
+          aria-label="Библиотека и группы"
+          aria-expanded="false"
+        >
+          ▦
+        </button>
+        <a href="#pins" title="Закреплённые у курсора" aria-label="Закреплённые">⚑</a>
+        <a href="#clips" title="Журнал буфера" aria-label="Журнал буфера">◷</a>
+        <a href="#view-library" title="Библиотека" aria-label="Библиотека">▱</a>
+        <span class="spacer"></span><a href="#view-look" title="Настройки" aria-label="Настройки">☷</a>
+        <a href="#view-diag" title="Диагностика" aria-label="Диагностика">⌁</a>
+        <a href="#view-about" title="О приложении" aria-label="О приложении">?</a>
+      </nav>
+      <aside class="crm-drawer" aria-label="Группы библиотеки">
+        <h2>
+          Библиотека<button
+            type="button"
+            id="crmGroupAdd"
+            title="Добавить группу"
+            aria-label="Добавить группу"
+          >
+            +
+          </button>
+        </h2>
+        <button id="crmAll" type="button">▦ &nbsp; Все промпты</button
+        ><button id="crmPinned" type="button">⚑ &nbsp; Закреплённые</button>
+        <h3>ГРУППЫ</h3>
+        <div id="crmGroups"></div>
+        <h3>ДЕЙСТВИЯ</h3>
+        <a href="#view-library">Библиотека</a><a href="#view-hotkeys">Горячие клавиши</a
+        ><a href="#view-cloud">Синхронизация в облако</a><a href="#view-order">Порядок</a
+        ><a href="#view-clipboard">Буфер</a><a href="#view-service">Сервис</a>
+      </aside>
+      <main class="crm-content">
+        <header class="crm-toolbar">
+          <span>Библиотека / <b id="crmHeading">Все промпты</b></span
+          ><label class="visually-hidden" for="crmSearch">Поиск промпта</label
+          ><input id="crmSearch" type="search" placeholder="Найти…" /><button id="crmAdd" type="button">
+            + Промпт
+          </button>
+        </header>
+        <div class="crm-workspace">
+          <section class="crm-table" aria-label="Промпты">
+            <div class="crm-table-head"><strong>Промпты</strong><small id="crmCount">Загрузка…</small></div>
+            <div class="crm-columns"><span>Название</span><span>Группа</span></div>
+            <div id="crmList" role="listbox" aria-label="Список промптов" tabindex="0"></div>
+            <div id="crmEmpty" hidden>Нет совпадений. Измени поиск или группу.</div>
+          </section>
+          <aside class="crm-preview" aria-label="Превью">
+            <small>Превью</small>
+            <h2 id="crmPreviewTitle">Нет выбранного промпта</h2>
+            <div id="crmPreviewMeta"></div>
+            <pre id="crmPreviewBody"></pre>
+            <footer class="crm-preview-actions">
+              <button id="crmPin" type="button" disabled>Закрепить</button
+              ><button id="crmEdit" type="button" disabled>Редактор</button
+              ><button id="crmCopy" type="button" disabled>Копировать</button>
+            </footer>
+          </aside>
+        </div>
+      </main>
+      <footer class="crm-footer">
+        <span id="crmStatus" data-state="warn">Проверка связи…</span
+        ><a href="#pins">Ctrl ⇧ Q · закреплённые</a>
+      </footer>
+    </section>
+    <dialog id="crmEditor" aria-labelledby="crmEditorHeading">
+      <form id="crmEditorForm" method="dialog">
+        <header>
+          <h2 id="crmEditorHeading">Редактор промпта</h2>
+          <button type="button" id="crmEditorClose" aria-label="Закрыть редактор">×</button>
+        </header>
+        <label for="crmTitle">Название</label><input id="crmTitle" required maxlength="200" /><label
+          for="crmGroup"
+          >Группа</label
+        ><select id="crmGroup"></select
+        ><label for="crmBody">Текст промпта</label><textarea id="crmBody" required></textarea>
+        <footer>
+          <small>Ctrl+S: используй кнопку сохранения</small
+          ><button id="crmSave" type="submit">Сохранить</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <!-- ============ Окно выбора промпта (§3.1) ============ -->
+    <main class="stage" id="stagePicker">
+      <section id="picker" aria-label="Выбор промпта" data-expanded="false">
+        <header id="pickerHead">
+          <span aria-hidden="true">🔍</span>
+          <label class="visually-hidden" for="pickerSearch">Поиск промпта</label>
+          <input
+            id="pickerSearch"
+            type="search"
+            placeholder="Поиск: имя, группа, текст"
+            autocomplete="off"
+            spellcheck="false"
+            aria-controls="pickerList"
+            aria-describedby="pickerHints"
+          />
+          <span id="headState" class="state is-none">
+            <span class="glyph" aria-hidden="true">–</span><span class="word">нет связи</span>
+          </span>
+        </header>
+
+        <div id="pickerBody">
+          <ul id="pickerList" role="listbox" aria-label="Промпты" tabindex="-1"></ul>
+
+          <aside id="pickerPreview" aria-label="Просмотр промпта" hidden>
+            <h2 id="previewTitle">—</h2>
+            <div id="previewMeta"></div>
+            <pre id="previewBody" class="wrap"></pre>
+          </aside>
+        </div>
+
+        <!-- Пустое состояние: причина и следующее действие, а не «0» (§5). -->
+        <div id="pickerEmpty" hidden>
+          <span class="state is-none"
+            ><span class="glyph" aria-hidden="true">–</span><span class="word">нет данных</span></span
+          >
+          <p id="pickerEmptyText" class="muted">Загрузка…</p>
+        </div>
+
+        <footer id="pickerHints">
+          <span>↑↓ выбор</span>
+          <span>Enter вставить</span>
+          <span>Tab в буфер</span>
+          <span>1–9 закреплённые</span>
+          <span>Space превью</span>
+          <span>Esc закрыть</span>
+        </footer>
+      </section>
+    </main>
+
+    <!-- ============ Журнал буфера обмена (§3.2) ============ -->
+    <section id="clips" aria-label="Журнал буфера обмена" hidden>
+      <header id="clipsHead">
+        <label class="visually-hidden" for="clipsSearch">Поиск в журнале</label>
+        <input id="clipsSearch" type="search" placeholder="Поиск в журнале" autocomplete="off" />
+        <span id="clipsCount" class="badge" title="записей в журнале">—</span>
+        <span id="clipsWatch" class="state is-none">
+          <span class="glyph" aria-hidden="true">–</span><span class="word">нет данных</span>
+        </span>
+        <button id="clipsPauseBtn" type="button" aria-pressed="false">Пауза</button>
+      </header>
+
+      <div id="clipsFilters" role="group" aria-label="Фильтр по типу"></div>
+
+      <ul id="clipsList" role="listbox" aria-label="Записи буфера" tabindex="-1"></ul>
+
+      <div id="clipsEmpty" hidden>
+        <span class="state is-none"
+          ><span class="glyph" aria-hidden="true">–</span><span class="word">нет данных</span></span
+        >
+        <p id="clipsEmptyText" class="muted">Журнал пуст.</p>
+      </div>
+    </section>
+
+    <!--
+  Контекстное меню журнала: ровно три пункта.
+  Владелец сформулировал прямо: «больше тут копировать и сохранить ничего не надо».
+-->
+    <div id="clipMenu" role="menu" aria-label="Действия с записью" hidden>
+      <button id="clipCopyBtn" type="button" role="menuitem">Копировать</button>
+      <button id="clipPromoteBtn" type="button" role="menuitem" aria-expanded="false">
+        Сохранить как промпт ▸
+      </button>
+      <button id="clipDeleteBtn" type="button" role="menuitem">Удалить</button>
+      <div id="clipGroupList" role="group" aria-label="Куда сохранить" hidden></div>
+    </div>
+
+    <!-- ============ Окно управления (§3.3) ============ -->
+    <div id="deck" hidden>
+      <nav id="deckNav" aria-label="Разделы настроек">
+        <a href="#crm">← Мини-CRM</a>
+        <a href="#view-cloud">Облако</a>
+        <a href="#view-about">О приложении</a>
+        <a href="#view-service" aria-current="page">Сервис</a>
+        <a href="#view-hotkeys">Горячие клавиши</a>
+        <a href="#view-look">Вид</a>
+        <a href="#view-order">Порядок</a>
+        <a href="#view-clipboard">Буфер</a>
+        <a href="#view-library">Библиотека</a>
+        <a href="#view-diag">Диагностика</a>
+      </nav>
+
+      <main id="deckMain">
+        <section id="view-cloud" aria-labelledby="h-cloud" hidden>
+          <h1 id="h-cloud">Синхронизация в облако</h1>
+          <h2>Без регистрации · резервная копия</h2>
+          <p class="muted">
+            Файл настроек: интерфейс, порядок и горячие клавиши. Без промптов,
+            журнала, путей и ключей. Это не облачная синхронизация. После восстановления перечитай настройки в трее, чтобы применить хоткеи.
+          </p>
+          <label for="backupName">Имя копии</label>
+          <input id="backupName" maxlength="80" value="Мой Paper" />
+          <button type="button" id="backupSave">Сохранить настройки</button>
+          <button type="button" id="backupRestore">
+            Восстановить из файла…
+          </button>
+          <input
+            id="backupFile" aria-label="Файл резервной копии настроек"
+            type="file"
+            accept=".json,application/json"
+            hidden
+          />
+          <h2>Google Drive · дополнительно</h2>
+          <p id="cloudState" role="status">Проверка Google Drive…</p>
+          <p class="muted">
+            Именованные снимки настроек интерфейса, порядка и хоткеев. Промпты, журнал, пути и ключи не
+            отправляются. Профили скрыты в appDataFolder Google Drive.
+          </p>
+          <details><summary>Настройка Google · для разработчика</summary>
+          <div class="field">
+            <label for="cloudClient">Desktop OAuth client ID</label
+            ><input id="cloudClient" autocomplete="off" placeholder="….apps.googleusercontent.com" /><button
+              type="button"
+              id="cloudClientSave"
+            >
+              Сохранить ID
+            </button>
+          </div>
+          </details>
+          <button type="button" id="cloudLogin">Войти через Google</button>
+          <button type="button" id="cloudDisconnect">Отключить локально</button>
+          <div class="field">
+            <label for="cloudName">Имя профиля</label
+            ><input id="cloudName" maxlength="80" placeholder="Мой Paper" /><button
+              type="button"
+              id="cloudSave"
+            >
+              Сохранить в облако
+            </button>
+          </div>
+          <div class="field">
+            <label for="cloudProfiles">Облачные профили</label
+            ><select id="cloudProfiles"></select
+            ><button type="button" id="cloudList">Обновить</button
+            ><button type="button" id="cloudRestore">Восстановить…</button>
+          </div>
+          <p class="muted">
+            Сохранение создаёт новый снимок, не затирая другой компьютер. Отключение стирает локальный
+            credential; доступ Google можно отозвать в настройках аккаунта.
+          </p>
+        </section>
+        <section id="view-about" aria-labelledby="h-about" hidden>
+          <h1 id="h-about">CallMyPromts · Paper</h1>
+          <p>Мини-CRM для промптов, закреплённые рядом с курсором.</p>
+          <h2>На кофе</h2>
+          <p>USDT · только сеть Tron (TRC20)</p>
+          <code class="coffee-address" id="coffeeAddress"
+            >TLbByAXvtNNxWTTCrRrRU7yQjib8p5k1RH</code
+          >
+          <button type="button" id="coffeeCopy">Скопировать адрес</button>
+          <p class="muted">
+            Сверь адрес и сеть перед переводом. Приложение не отправляет
+            средства и не открывает кошелёк автоматически.
+          </p>
+          <h2>Источники</h2>
+          <p>
+            Folio © 2026 @yumi_acess — MIT. AtomicCRM — визуальный ориентир, без переноса стека. Интерфейс и
+            код проекта сохраняют отдельные лицензии.
+          </p>
+        </section>
+
+        <section id="view-service" aria-labelledby="h-service">
+          <h1 id="h-service">Сервис</h1>
+          <div class="field">
+            <span>Состояние</span>
+            <span id="svcState" class="state is-none">
+              <span class="glyph" aria-hidden="true">–</span><span class="word">нет данных</span>
+            </span>
+          </div>
+          <div class="field">
+            <span>Работает</span>
+            <span id="svcUptime" class="mono">—</span>
+          </div>
+          <div class="field">
+            <span>Управление</span>
+            <span>
+              <button id="svcStartBtn" type="button">Запустить</button>
+              <button id="svcStopBtn" type="button">Остановить</button>
+              <button id="svcRestartBtn" type="button">Перезапустить</button>
+            </span>
+          </div>
+        </section>
+
+        <section id="view-hotkeys" aria-labelledby="h-keys" hidden>
+          <h1 id="h-keys">Горячие клавиши</h1>
+          <div class="fields"></div>
+          <div class="field">
+            <span>Конфликты</span>
+            <div id="keyConflicts">
+              <span class="state is-none"
+                ><span class="glyph" aria-hidden="true">–</span><span class="word">не проверялось</span></span
+              >
+            </div>
+          </div>
+          <button id="keyResetBtn" type="button">Вернуть значения по умолчанию</button>
+        </section>
+
+        <section id="view-look" aria-labelledby="h-look" hidden>
+          <h1 id="h-look">Вид</h1>
+          <div class="fields"></div>
+        </section>
+
+        <section id="view-order" aria-labelledby="h-order" hidden>
+          <h1 id="h-order">Порядок</h1>
+          <div class="fields"></div>
+        </section>
+
+        <section id="view-clipboard" aria-labelledby="h-clip" hidden>
+          <h1 id="h-clip">Буфер</h1>
+          <div class="fields"></div>
+        </section>
+
+        <section id="view-library" aria-labelledby="h-lib" hidden>
+          <h1 id="h-lib">Библиотека</h1>
+          <div class="fields"></div>
+          <div class="field">
+            <span>Промптов</span>
+            <span id="libCount" class="mono">—</span>
+          </div>
+          <div class="field">
+            <span>Проблемы</span>
+            <div id="libIssues"></div>
+          </div>
+        </section>
+
+        <section id="view-diag" aria-labelledby="h-diag" hidden>
+          <h1 id="h-diag">Диагностика</h1>
+          <button id="diagRunBtn" type="button">Проверить всё</button>
+          <div id="diagList"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+
+    <script type="module" src="/views/app.js"></script>
+  </body>
+</html>

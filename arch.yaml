@@ -1,0 +1,149 @@
+# arch.yaml — КАРТА ГРАНИЦ CallMyPromts. Единственный источник правды о структуре.
+#
+# Конвенция унаследована от zoo-kit/SpecKit: слои, модули, публичный вход-барьер,
+# may_depend_on без циклов. Причина: расхождение двух карт границ означало бы два
+# разных мнения о структуре проекта.
+#
+# Модули КАК ЕСТЬ:
+#   contracts/  — схемы сущностей и их валидация; ни от кого не зависит
+#   library/    — библиотека промптов .md: чтение, запись, frontmatter, группы
+#   clipboard/  — журнал буфера обмена: SQLite, дедупликация, кольцевой лимит
+#   rank/       — порядок и поиск: закреплённые + частота, температура, лексика
+#   server/     — локальный HTTP API на 127.0.0.1 с токеном
+#   ui/         — веб-интерфейс: три раскладки, две темы; данные только через API
+#   bridge/     — мост в ОС: горячие клавиши, слежка за буфером, вставка, трей
+#   gates/      — гейты: границы, размер чанков, трасса, секреты
+#   tests/      — unit, integration, e2e
+#   legacy/     — миграция: чтение трёх копий библиотеки, слияние, перенос клипов
+#   release/    — слой релизов: неизменяемый код, состояние в shared/, указатель live
+#   config/     — файлы В КОРНЕ проекта
+#
+# Модуль config имеет path "." и идёт ПОСЛЕДНИМ: иначе он поглотил бы всё дерево.
+#
+# Правила, которые карта обязана соблюдать:
+#   - domain не зависит ни от кого: contracts, library, clipboard — без связей вверх;
+#   - ui не имеет права на data: ui не импортирует library и clipboard, только API;
+#   - связи образуют DAG без циклов;
+#   - карта НЕ подгоняется под код: реальные нарушения уходят в baseline.
+#
+# entry — публичный барьер модуля. Импорт мимо барьера = нарушение границы,
+# даже если «так короче». Ловит gates/arch-check.mjs.
+
+layers: [ui, app, adapters, domain, data]
+
+modules:
+  contracts:
+    path: contracts
+    entry: contracts/index.mjs
+    layer: domain
+    may_depend_on: []
+    owns_req: [REQ-CT-PROMPT, REQ-CT-CLIP, REQ-CT-SETTINGS, REQ-CT-YAML]
+
+  library:
+    path: library
+    entry: library/index.mjs
+    layer: domain
+    may_depend_on: [contracts]
+    owns_req: [REQ-LIB-READ, REQ-LIB-WRITE, REQ-LIB-GROUP, REQ-LIB-SAFE]
+
+  clipboard:
+    path: clipboard
+    entry: clipboard/index.mjs
+    layer: domain
+    may_depend_on: [contracts]
+    owns_req: [REQ-CLIP-LOG, REQ-CLIP-CAP, REQ-CLIP-DEDUP, REQ-CLIP-KIND, REQ-CLIP-PRIVACY]
+
+  rank:
+    path: rank
+    entry: rank/index.mjs
+    layer: app
+    may_depend_on: [contracts, library, clipboard]
+    owns_req: [REQ-RANK-ORDER, REQ-RANK-SEARCH, REQ-RANK-TEMP, REQ-RANK-USE]
+
+  # server зависит от bridge ради проверки хоткеев: мост знает, что удалось
+  # зарегистрировать в ОС, сервер знает, что просил человек, а состояние в
+  # runtime.json — пересечение обоих. Обратной связи нет: bridge о server не знает
+  # и общается с ним только по HTTP, как интерфейс. Цикла в графе не возникает.
+  server:
+    path: server
+    entry: server/index.mjs
+    layer: adapters
+    may_depend_on: [contracts, library, clipboard, rank, bridge]
+    owns_req: [REQ-API-PROMPTS, REQ-API-CLIPS, REQ-API-SYSTEM, REQ-API-AUTH, REQ-API-BIND, REQ-API-CLOUD]
+
+  ui:
+    path: ui
+    entry: ui/index.html
+    layer: ui
+    may_depend_on: []
+    owns_req: [REQ-UI-LAYOUT, REQ-UI-THEME, REQ-UI-MOTION, REQ-UI-STATE, REQ-UI-A11Y, REQ-UI-CLIPS, REQ-UI-SETTINGS, REQ-UI-CRM]
+
+  bridge:
+    path: bridge
+    entry: bridge/index.mjs
+    layer: adapters
+    may_depend_on: [contracts]
+    owns_req: [REQ-KEY-BIND, REQ-KEY-CONFLICT, REQ-KEY-PASTE, REQ-KEY-WATCH, REQ-SVC-TRAY, REQ-KEY-PINMENU]
+
+  gates:
+    path: gates
+    entry: gates/verify.mjs
+    layer: app
+    may_depend_on: [contracts]
+    owns_req: [REQ-GATE-ARCH, REQ-GATE-CHUNK, REQ-GATE-TRACE, REQ-GATE-SECRET, REQ-GATE-RELEASE]
+
+  # release — слой L1 по концепции gld/gold.md §2: релизы и указатель.
+  #
+  # Зависимостей нет ни одной, и это главное его свойство. Слой релизов не знает ни
+  # про сервер, ни про интерфейс, ни про домен: он переставляет указатель и связывает
+  # каталоги. Обратное направление тоже запрещено — сервер о нём не знает, поэтому
+  # `release` отсутствует в `may_depend_on` у `server`.
+  #
+  # Единственная связь с остальным кодом односторонняя и идёт снаружи: скрипт
+  # установки вызывает `release`, а потом отдельно спрашивает у сервера `/readyz`.
+  # По HTTP, а не импортом — так же, как это делает супервизор.
+  release:
+    path: release
+    entry: release/index.mjs
+    layer: adapters
+    may_depend_on: []
+    owns_req: [REQ-REL-LAYOUT, REQ-REL-SWAP]
+
+  # tests зависит от всех модулей: тест обязан вызывать то, что проверяет.
+  # legacy добавлен вслед за появлением tests/unit/migrate*.test.mjs — гейт границ
+  # назвал это нарушением, и был прав: без разрешения миграция осталась бы без
+  # тестов либо тест импортировал бы её мимо карты.
+  tests:
+    path: tests
+    entry: tests/helpers/harness.mjs
+    layer: app
+    may_depend_on: [contracts, library, clipboard, rank, server, bridge, gates, legacy, release]
+    owns_req: [REQ-TEST-UNIT, REQ-TEST-E2E]
+
+  # legacy зависит от contracts и library, и это изменение карты, а не обход её.
+  #
+  # Сначала модуль был описан как архив прежних Python-скриптов: «только чтение,
+  # из пайплайна выведены», may_depend_on пустой. Когда в нём появилась настоящая
+  # миграция, гейт границ немедленно назвал четыре нарушения — и был прав: файл
+  # изменился, карта нет. Ровно тот случай, ради которого гейт существует.
+  #
+  # Разрешение узкое и осмысленное. Миграция обязана читать frontmatter тем же
+  # парсером (contracts) и очищать тело той же функцией (library), иначе появится
+  # второе мнение о формате файла промпта — прямой запрет docs/RULES.md §1. Писать
+  # в prompts/ она тоже обязана через library: владелец сущности «Промпт» один.
+  #
+  # Обратной связи нет: ни contracts, ни library о legacy не знают. Слой adapters,
+  # а не data: модуль исполняет действия над файловой системой, а не хранит данные.
+  legacy:
+    path: legacy
+    entry: legacy/index.mjs
+    layer: adapters
+    may_depend_on: [contracts, library, clipboard]
+    owns_req: [REQ-MIG-REPORT, REQ-MIG-APPLY, REQ-MIG-CLIPS, REQ-MIG-LEGACY]
+
+  config:
+    path: .
+    entry: package.json
+    layer: app
+    may_depend_on: []
+    owns_req: [REQ-CFG-ROOT]

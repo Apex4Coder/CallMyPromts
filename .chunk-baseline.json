@@ -1,0 +1,12 @@
+{
+  "note": "Пишется только gates/chunk-check.mjs. Правка руками запрещена (docs/RULES.md §7).",
+  "generated_at": "2026-09-07T01:08:29.501Z",
+  "limits": {
+    "fileLines": 300,
+    "funcLines": 60,
+    "lineChars": 400,
+    "nesting": 3
+  },
+  "violations": 0,
+  "items": []
+}

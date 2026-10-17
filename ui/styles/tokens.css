@@ -1,0 +1,359 @@
+/* ui/styles/tokens.css — токены оформления: обе темы, пять акцентов, четыре статуса.
+ *
+ * Требование: REQ-UI-THEME (docs/SPEC.md §7). Значения: docs/UI-SPEC.md §1.
+ * Тест: tests/e2e/theme.spec.mjs.
+ *
+ * Все варианты живут в одном файле и переключаются атрибутами на <html>:
+ * data-theme, data-accent, data-density, data-motion. Ни один вариант не требует
+ * перезагрузки страницы — это проверяет U-20.
+ */
+
+:root {
+  /* Форма и сетка — из настройки VS Code владельца (UI-SPEC §1.4). */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --grid: 4px;
+
+  --font: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  /* Масштаб шрифта из настроек: 100..200 → 1..2 (docs/DATA-CONTRACTS.md §3).
+   * Множитель применён к самим токенам, а не к font-size корня: иначе размеры,
+   * заданные в px, не изменились бы вовсе, а сетка в 4px разъехалась бы. */
+  --font-scale: 1;
+
+  --fs-h1: calc(22px * var(--font-scale));
+  --fs-h2: calc(15px * var(--font-scale));
+  --fs-base: calc(13px * var(--font-scale));
+  --fs-small: calc(11.5px * var(--font-scale));
+  --fs-mono: calc(12px * var(--font-scale));
+
+  --gap-1: calc(var(--grid) * 1);
+  --gap-2: calc(var(--grid) * 2);
+  --gap-3: calc(var(--grid) * 3);
+  --gap-4: calc(var(--grid) * 4);
+  --gap-6: calc(var(--grid) * 6);
+
+  /* Плотность: множитель вертикальных отступов (UI-SPEC §1.4). */
+  --density: 1;
+  --row-pad: calc(var(--gap-2) * var(--density));
+
+  /* Движение — токены Material 3 (UI-SPEC §1.5). */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --ease-emph-dec: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-emph-acc: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  --dur-instant: 100ms;
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+}
+
+/* ---------- Две границы вместо одной ----------
+ *
+ * `--outline` — граница, по которой узнаётся элемент: рамка поля ввода, кнопки,
+ * плавающего окна, меню. Обязана давать ≥3:1 к фону (U-2).
+ * `--outline-variant` — разделитель внутри одной поверхности: линия под шапкой,
+ * между списком и превью, между строками настроек. Он ничего не обозначает,
+ * поэтому к нему требование контраста не применяется.
+ *
+ * Разделение взято из Material 3 (`outline` / `outline-variant`) и появилось не
+ * из красоты: единый серый #c4c7c5 давал 1.5:1 к светлому фону, то есть рамка
+ * поля ввода была неразличима, а измерение контраста в E2E это показало числом.
+ */
+
+/* ---------- Светлая тема (по умолчанию) ----------
+ *
+ * Цвета статусов подобраны по измерению, а не на глаз. Прежние значения были
+ * взяты из палитры уровня 500 и на светлом фоне давали: зелёный 2.3:1,
+ * янтарный 1.9:1, серый 2.2:1 — при требовании ≥3:1 (U-2). То есть граница
+ * плашки «в норме» физически не читалась, и человек различал состояния только
+ * по значку. Значок обязателен и остаётся (U-3), но это не повод оставлять
+ * невидимую рамку. Взяты уровни 600–700 той же палитры: оттенок узнаётся,
+ * контраст 3.4:1 … 4.5:1.
+ */
+
+:root,
+[data-theme="light"] {
+  --surface: #f0f2f5;
+  --surface-2: #e7e5e4;
+  --surface-3: #e8eaed;
+  --surface-sel: #dfe3e8;
+  --text: #1e2938;
+  /* #6b7280 давал 4.26:1 — ниже требования 4.5:1 для текста (UI-SPEC §6). */
+  --text-muted: #4b5563;
+  --outline: #79747e;
+  --outline-variant: #c4c7c5;
+  --shadow: 0 12px 32px rgba(87, 82, 121, 0.14);
+
+  --good: #059669;
+  --warn: #b45309;
+  --bad: #dc2626;
+  --none: #6b7280;
+
+  --good-ink: #065f46;
+  --warn-ink: #92400e;
+  --bad-ink: #991b1b;
+  --none-ink: #4b5563;
+}
+
+/* ---------- Тёмная тема ----------
+ * Здесь цвета статусов проверку проходили сразу (9:1 и выше): на тёмном фоне
+ * светлый оттенок читается легко. Заменён только `--outline`: #45474a давал
+ * 1.84:1, то есть рамки полей ввода не было видно.
+ */
+
+[data-theme="dark"] {
+  --surface: #1b1b1f;
+  --surface-2: #26262b;
+  --surface-3: #2e2e34;
+  --surface-sel: #36363d;
+  --text: #e4e2e6;
+  /* #9a97a0 давал 4.17:1 — но не на основном фоне, а на ВЫДЕЛЕННОЙ строке
+   * (--surface-sel светлее --surface). То есть группа и время читались хуже
+   * всего именно у той строки, которую человек сейчас выбирает. Порог считается
+   * по худшему фону, а не по среднему. */
+  --text-muted: #adaab2;
+  --outline: #938f99;
+  --outline-variant: #45474a;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  --good: #34d399;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --none: #6b7280;
+
+  --good-ink: #6ee7b7;
+  --warn-ink: #fcd34d;
+  --bad-ink: #fca5a5;
+  --none-ink: #9ca3af;
+}
+
+/* Системная тема: те же значения, но по медиазапросу.
+ * Дублирование неизбежно — CSS не умеет наследовать блок переменных. */
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    --surface: #1b1b1f;
+    --surface-2: #26262b;
+    --surface-3: #2e2e34;
+    --surface-sel: #36363d;
+    --text: #e4e2e6;
+    --text-muted: #adaab2;
+    --outline: #938f99;
+    --outline-variant: #45474a;
+    --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --none: #6b7280;
+
+    --good-ink: #6ee7b7;
+    --warn-ink: #fcd34d;
+    --bad-ink: #fca5a5;
+    --none-ink: #9ca3af;
+  }
+}
+
+/* ---------- Акценты ----------
+ * Красный и зелёный не предлагаются: они заняты статусами, и акцент того же
+ * тона сделал бы ошибку неотличимой от кнопки (UI-SPEC §1.2).
+ */
+
+:root,
+[data-accent="teal"] { --accent: #006666; --accent-soft: rgba(0, 102, 102, 0.12); }
+[data-accent="indigo"] { --accent: #4338ca; --accent-soft: rgba(67, 56, 202, 0.12); }
+[data-accent="amber"] { --accent: #92400e; --accent-soft: rgba(146, 64, 14, 0.12); }
+[data-accent="rose"] { --accent: #9f1239; --accent-soft: rgba(159, 18, 57, 0.12); }
+[data-accent="slate"] { --accent: #334155; --accent-soft: rgba(51, 65, 85, 0.12); }
+
+[data-theme="dark"][data-accent="teal"] { --accent: #4db6ac; --accent-soft: rgba(77, 182, 172, 0.16); }
+[data-theme="dark"][data-accent="indigo"] { --accent: #a5b4fc; --accent-soft: rgba(165, 180, 252, 0.16); }
+[data-theme="dark"][data-accent="amber"] { --accent: #fcd34d; --accent-soft: rgba(252, 211, 77, 0.16); }
+[data-theme="dark"][data-accent="rose"] { --accent: #fda4af; --accent-soft: rgba(253, 164, 175, 0.16); }
+[data-theme="dark"][data-accent="slate"] { --accent: #cbd5e1; --accent-soft: rgba(203, 213, 225, 0.16); }
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"][data-accent="teal"] { --accent: #4db6ac; --accent-soft: rgba(77, 182, 172, 0.16); }
+  [data-theme="system"][data-accent="indigo"] { --accent: #a5b4fc; --accent-soft: rgba(165, 180, 252, 0.16); }
+  [data-theme="system"][data-accent="amber"] { --accent: #fcd34d; --accent-soft: rgba(252, 211, 77, 0.16); }
+  [data-theme="system"][data-accent="rose"] { --accent: #fda4af; --accent-soft: rgba(253, 164, 175, 0.16); }
+  [data-theme="system"][data-accent="slate"] { --accent: #cbd5e1; --accent-soft: rgba(203, 213, 225, 0.16); }
+}
+
+/* ---------- Плотность ---------- */
+
+[data-density="compact"] { --density: 0.75; }
+[data-density="normal"] { --density: 1; }
+[data-density="comfortable"] { --density: 1.25; }
+
+/* ---------- База ---------- */
+
+* { box-sizing: border-box; }
+
+/* Атрибут hidden сильнее любой раскладки.
+ *
+ * В таблице стилей браузера это `[hidden] { display: none }` — селектор по
+ * атрибуту, и он проигрывает любому правилу с id. `#clips { display: flex }`
+ * перебивал его, и страница показывала все три экрана сразу: под окном выбора
+ * шёл журнал буфера, под ним окно управления. То же с пустым состоянием — блок
+ * «нет данных» висел под непустым списком.
+ *
+ * `!important` здесь по делу: hidden означает «этого сейчас нет», и ни одна
+ * раскладка не имеет права это отменить. Иначе пришлось бы дописывать
+ * `#id[hidden] { display: none }` под каждый скрываемый узел — то есть держать
+ * два мнения о видимости (docs/RULES.md §1). */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: var(--fs-base);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--surface);
+  /* Сглаживание вкл. намеренно: текст промптов читают, а не просматривают. */
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 { font-size: var(--fs-h1); font-weight: 700; margin: 0 0 var(--gap-3); }
+h2 { font-size: var(--fs-h2); font-weight: 650; margin: 0 0 var(--gap-2); }
+
+code, pre, .mono { font-family: var(--mono); font-size: var(--fs-mono); }
+
+/* Фокус видим всегда. outline: none не используется нигде (UI-SPEC §6). */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Длинные пути и токены переносятся, горизонтального скролла нет (U-15). */
+.wrap { overflow-wrap: anywhere; min-width: 0; }
+
+/* Скрытие подписи от глаз, но не от чтения с экрана: label обязателен (§6).
+ *
+ * Правило лежит здесь, а не в <style> внутри разметки: политика безопасности
+ * запрещает встроенные стили (`style-src 'self'`), и в разметке блок просто не
+ * применялся — подпись «Поиск промпта» была видна рядом с полем. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Четыре состояния ----------
+ * Плашка обязана содержать значок И слово: цвет — только усиление (U-3).
+ */
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-1);
+  padding: 1px var(--gap-2);
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+
+.state .glyph { font-weight: 700; }
+
+.is-good { color: var(--good-ink); border-color: var(--good); background: color-mix(in srgb, var(--good) 12%, transparent); }
+.is-warn { color: var(--warn-ink); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.is-bad { color: var(--bad-ink); border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.is-none { color: var(--none-ink); border-color: var(--none); background: color-mix(in srgb, var(--none) 12%, transparent); }
+
+/* ---------- Температура ----------
+ * Светофор не используется: зелёный и красный заняты статусами. Температура
+ * показывается глифом ▰▰▰ и словом, цвет — оттенок акцента по насыщенности.
+ */
+
+.temp { display: inline-flex; gap: var(--gap-1); align-items: center; font-size: var(--fs-small); color: var(--text-muted); }
+.temp .bars { font-family: var(--mono); letter-spacing: -1px; }
+.temp[data-level="hot"] .bars { color: var(--accent); }
+.temp[data-level="warm"] .bars { color: color-mix(in srgb, var(--accent) 70%, var(--text-muted)); }
+.temp[data-level="cool"] .bars { color: color-mix(in srgb, var(--accent) 40%, var(--text-muted)); }
+.temp[data-level="cold"] .bars { color: var(--text-muted); }
+
+/* ---------- Общие мелочи ---------- */
+
+.badge {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 var(--gap-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: var(--fs-small);
+  text-align: center;
+}
+
+.muted { color: var(--text-muted); }
+.hit { background: var(--accent-soft); border-radius: 3px; font-weight: 700; }
+
+/* Кнопка: цель нажатия не меньше 32px по высоте.
+ *
+ * Дефект найден инвариантом I2 (tests/e2e/geometry.mjs): восемь элементов журнала
+ * имели высоту 29px, потому что базовый стиль задавал только внутренний отступ, а
+ * высота бралась от строки шрифта. На всех трёх ширинах и в обеих темах одинаково.
+ *
+ * Правится ОДНИМ местом сознательно. Методичка gld/ui-contract.txt §2.1 говорит об
+ * этом прямо: «кнопки режутся рамкой» чинится внутри примитива, а не восемь раз на
+ * восьми экранах. Точечная правка каждой кнопки в своём файле стилей означала бы,
+ * что девятая, добавленная завтра, снова окажется 29px.
+ *
+ * `min-height` вместе с `align-items: center`: содержимое остаётся по центру, а при
+ * увеличенном масштабе шрифта кнопка растёт, а не обрезает текст.
+ * `white-space: nowrap` — подпись не разрывается на две строки, из-за чего кнопка
+ * переставала быть одной строкой ряда. */
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  padding: var(--gap-1) var(--gap-3);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-1);
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+/* Поля ввода — та же цель нажатия, та же причина.
+ * Поиск в журнале имел 29px по тому же основанию, что и кнопки. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  min-height: 32px;
+}
+
+button:hover { background: var(--surface-3); }
+button[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 650; }
+
+input[type="text"], input[type="search"], input[type="number"], select, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  padding: var(--gap-1) var(--gap-2);
+  width: 100%;
+}
+
+input[aria-invalid="true"] { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--surface-2)); }

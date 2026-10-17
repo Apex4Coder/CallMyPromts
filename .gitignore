@@ -1,0 +1,9 @@
+node_modules/
+state/
+prompts/
+.bro/
+dist/
+packaging/.payload/
+packaging/bin/
+packaging/obj/
+test-results/

@@ -1,0 +1,167 @@
+/* ui/styles/motion.css — движение. Только transform и opacity.
+ *
+ * Требование: REQ-UI-MOTION (docs/SPEC.md §7). Токены: docs/UI-SPEC.md §1.5.
+ * Тест: tests/e2e/motion.spec.mjs.
+ *
+ * Правило без исключений: анимируются `transform` и `opacity` — они обрабатываются
+ * композитором и не вызывают reflow. Исключение одно и оно осознанное — подсветка
+ * строки меняет `background-color`: это одно свойство на одном элементе.
+ *
+ * Запрещены: width, height, top, left, box-shadow, filter, backdrop-filter.
+ * Причина: на слабой машине и через удалённое подключение они дают рывки.
+ *
+ * Раскрытие панели в hybrid меняет ширину окна — поэтому оно НЕ анимируется
+ * шириной. Появляется сама панель: opacity + translateX.
+ */
+
+/* ---------- Появление окна выбора ---------- */
+
+@keyframes deck-enter {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+#picker {
+  animation: deck-enter var(--dur-fast) var(--ease-emph-dec) both;
+}
+
+/* Закрытие: класс ставит скрипт перед скрытием окна. */
+#picker.is-leaving {
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity var(--dur-instant) var(--ease-accelerate),
+              transform var(--dur-instant) var(--ease-accelerate);
+}
+
+/* ---------- Подсветка строки ---------- */
+
+.row,
+.clip {
+  transition: background-color var(--dur-instant) var(--ease-standard);
+}
+
+/* ---------- Раскрытие превью ---------- */
+
+#pickerPreview {
+  animation: preview-in var(--dur-base) var(--ease-decelerate) both;
+}
+
+@keyframes preview-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ---------- Смена группы и фильтра ---------- */
+
+#pickerList.is-swapping,
+#clipsList.is-swapping {
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-standard);
+}
+
+/* ---------- Новая запись в журнале ----------
+ * Приезжает сверху: буфер — это лог, и движение вниз показывает, что запись
+ * встала в начало очереди (владелец: «все записи идут друг за другом»).
+ */
+
+@keyframes clip-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.clip.is-new {
+  animation: clip-in var(--dur-base) var(--ease-emph-dec) both;
+}
+
+/* ---------- Вспышка «скопировано» ----------
+ * Подтверждение действия без модального окна: строка коротко светится и гаснет.
+ */
+
+@keyframes flash {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.row.is-flash::after,
+.clip.is-flash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent-soft);
+  animation: flash var(--dur-slow) var(--ease-decelerate) both;
+  pointer-events: none;
+}
+
+.row, .clip { position: relative; }
+
+/* ---------- Уведомление ---------- */
+
+#toast {
+  animation: toast-in var(--dur-base) var(--ease-emph-dec) both;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---------- Пульс индикатора сервиса ----------
+ * Медленный цикл 2 с: показывает, что сервис жив, и не отвлекает.
+ */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.dot.is-live { animation: pulse 2000ms linear infinite; }
+
+/* ---------- Уровни движения ----------
+ * `reduced`: движение почти мгновенное, но не исчезает совсем — исчезновение
+ * обратной связи хуже, чем её краткость.
+ * `off`: ни анимаций, ни переходов.
+ */
+
+[data-motion="reduced"] {
+  --dur-instant: 1ms;
+  --dur-fast: 1ms;
+  --dur-base: 80ms;
+  --dur-slow: 120ms;
+}
+
+[data-motion="reduced"] #picker,
+[data-motion="reduced"] #pickerPreview,
+[data-motion="reduced"] .clip.is-new {
+  animation-duration: 80ms;
+}
+
+[data-motion="reduced"] .dot.is-live { animation: none; }
+
+[data-motion="off"] *,
+[data-motion="off"] *::before,
+[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Системная настройка сильнее пользовательской: если человек попросил ОС
+ * уменьшить движение, приложение не имеет права это переопределять (§1.5). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 1ms;
+    --dur-fast: 1ms;
+    --dur-base: 80ms;
+    --dur-slow: 120ms;
+  }
+
+  #picker,
+  #pickerPreview,
+  .clip.is-new,
+  #toast {
+    animation-duration: 80ms;
+  }
+
+  .dot.is-live { animation: none; }
+}

@@ -1,0 +1,180 @@
+#crmEditor {
+  width: min(620px, 94vw);
+  max-height: 92dvh;
+  background: var(--paper-white);
+  color: var(--text);
+  border: 1px solid var(--outline-variant);
+  border-radius: 9px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+#crmEditor::backdrop {
+  background: #29322b55;
+  backdrop-filter: blur(2px);
+}
+#crmEditor header,
+#crmEditor footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+#crmEditor h2 {
+  font-size: 14px;
+  margin: 0;
+}
+#crmEditor label {
+  display: block;
+  margin: 12px 0 5px;
+  color: var(--text-muted);
+}
+#crmEditor input,
+#crmEditor select,
+#crmEditor textarea {
+  width: 100%;
+  font-size: 12px;
+}
+#crmEditor textarea {
+  height: 260px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.6;
+}
+#crmEditor footer {
+  margin-top: 12px;
+}
+#crm,
+#crmEditor {
+  animation: paper-appear 180ms ease-out;
+}
+@keyframes paper-appear {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+html[data-quick="true"] .stage {
+  padding: 0;
+  display: block;
+  min-height: 0;
+  height: 100dvh;
+}
+html[data-quick="true"] #picker {
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 6px;
+  box-shadow: none;
+}
+html[data-quick="true"] #pickerHead {
+  padding: 6px;
+}
+html[data-quick="true"] #pickerSearch {
+  font-size: 11px;
+  min-height: 26px;
+}
+html[data-quick="true"] #pickerPreview {
+  display: none !important;
+}
+html[data-quick="true"] #pickerHints {
+  font-size: 9px;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding: 6px;
+}
+html[data-quick="true"] .row {
+  min-height: 31px;
+  font-size: 11px;
+  padding: 5px 8px;
+}
+html[data-quick="true"] .row .group,
+html[data-quick="true"] .row .chip {
+  display: none;
+}
+[data-density="comfortable"] .crm-row {
+  min-height: 44px;
+  font-size: 14px;
+}
+@media (max-width: 720px) {
+  #crm {
+    height: 100dvh;
+    grid-template-columns: 44px minmax(0, 1fr);
+    border-radius: 0;
+  }
+  .crm-content {
+    grid-column: 2;
+  }
+  .crm-drawer {
+    position: absolute;
+    top: 32px;
+    bottom: 24px;
+    left: 44px;
+    width: 170px;
+    z-index: 5;
+    box-shadow: 10px 0 25px #34492a16;
+    transform: translateX(-110%);
+    visibility: hidden;
+    transition:
+      transform 180ms,
+      visibility 180ms;
+  }
+  .drawer-open .crm-drawer {
+    transform: none;
+    visibility: visible;
+  }
+  .crm-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .crm-preview {
+    display: none;
+  }
+  .crm-toolbar input {
+    width: 120px;
+  }
+  .crm-toolbar > span {
+    display: none;
+  }
+  .crm-row {
+    grid-template-columns: 20px minmax(0, 1fr) 70px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #crm,
+  #crmEditor,
+  .crm-drawer {
+    animation: none;
+    transition: none;
+  }
+}
+[data-motion="off"] #crm,
+[data-motion="off"] #crmEditor,
+[data-motion="reduced"] #crm,
+[data-motion="reduced"] #crmEditor {
+  animation: none;
+}
+
+/* Native CRM owns its viewport: no mockup-like card or unused browser canvas. */
+html[data-screen="crm"],
+html[data-screen="crm"] body {
+  height: 100%;
+  overflow: hidden;
+}
+html[data-screen="crm"] #crm {
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.coffee-address {
+  display: block;
+  overflow-wrap: anywhere;
+  user-select: all;
+  margin: 8px 0;
+}

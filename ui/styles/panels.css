@@ -1,0 +1,226 @@
+/* ui/styles/panels.css — журнал буфера, окно управления, уведомление.
+ *
+ * Требования: REQ-UI-CLIPS, REQ-UI-SETTINGS (docs/SPEC.md §7).
+ * DOM-id: docs/UI-SPEC.md §3.2, §3.3.
+ *
+ * Вынесено из layouts.css: тот отвечает за три раскладки окна выбора, этот — за
+ * два остальных экрана. Лимит чанка в 300 строк (docs/RULES.md §3) не обходится
+ * дописыванием в один файл, а соблюдается разделением по смыслу.
+ */
+
+/* ---------- Журнал буфера ---------- */
+
+#clips {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--surface);
+}
+
+/* Границы внутри одной поверхности — `--outline-variant` (ui/styles/tokens.css):
+ * они разделяют части экрана и не обозначают элемент. */
+#clipsHead {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  padding: var(--gap-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/*
+ * Контракт geometry I5 применим к тулбару только для его обязательной первой
+ * строки. Фильтры — отдельная полоса и имеют право перенестись ниже:
+ * на живом запуске именно это стало причиной провала `clipsHead > *` — поиск,
+ * пауза и фильтры были тремя разными рядами, и тест ошибочно объявил всё прямыми
+ * детьми одной горизонтальной полосы.
+ *
+ * Не схлопываем высоту и не запрещаем перенос: методичка говорит, что Toolbar
+ * допускает wrap на узком окне (§2.2). Контракт должен измерять реальную структуру,
+ * а не заставлять разные регионы притворяться одним.
+ */
+
+#clipsSearch { flex: 1; }
+
+#clipsFilters {
+  display: flex;
+  gap: var(--gap-1);
+  padding: var(--gap-2) var(--gap-3) 0;
+  flex-wrap: wrap;
+}
+
+#clipsFilters button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  font-weight: 650;
+}
+
+#clipsList {
+  flex: 1;
+  margin: 0;
+  padding: var(--gap-2) 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.clip {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: start;
+  gap: var(--gap-2);
+  padding: var(--row-pad) var(--gap-3);
+  cursor: default;
+}
+
+.clip:hover { background: var(--surface-3); }
+
+.clip[aria-selected="true"] {
+  background: var(--surface-sel);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.clip .glyph { font-family: var(--mono); color: var(--text-muted); text-align: center; }
+.clip .text { min-width: 0; overflow-wrap: anywhere; }
+.clip .when { color: var(--text-muted); font-size: var(--fs-small); white-space: nowrap; }
+
+/* Скрытая запись: содержимое не показывается, пока человек не нажмёт.
+ * Размытие не используется — оно снимается инструментами разработчика. */
+.clip.is-hidden .text { color: var(--text-muted); font-style: italic; }
+
+/* ---------- Контекстное меню: ровно три пункта (§3.2) ---------- */
+
+#clipMenu {
+  position: fixed;
+  z-index: 30;
+  min-width: 240px;
+  padding: var(--gap-1);
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+}
+
+#clipMenu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--gap-2);
+}
+
+#clipMenu button:hover { background: var(--surface-3); }
+
+#clipGroupList {
+  max-height: 240px;
+  overflow-y: auto;
+  border-top: 1px solid var(--outline-variant);
+  margin-top: var(--gap-1);
+  padding-top: var(--gap-1);
+}
+
+/* ---------- Окно управления ---------- */
+
+#deck {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+#deckNav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-1);
+  padding: var(--gap-3);
+  border-right: 1px solid var(--outline-variant);
+  background: var(--surface-2);
+}
+
+#deckNav a {
+  padding: var(--gap-2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+#deckNav a:hover { background: var(--surface-3); }
+#deckNav a[aria-current="page"] { background: var(--accent-soft); font-weight: 650; }
+
+#deckMain { padding: var(--gap-4); max-width: 820px; }
+
+.field {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--gap-3);
+  align-items: center;
+  padding: var(--row-pad) 0;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/* Дети строки не имеют права её распирать. Элемент grid по умолчанию не
+ * сжимается меньше своего min-content, и длинная причина в диагностике
+ * растягивала раздел за край окна (U-15). */
+.field > * { min-width: 0; }
+
+/* Строка диагностики ВНУТРИ строки настройки не повторяет колонку подписи.
+ *
+ * Так собраны «Конфликты» и «Проблемы»: снаружи .field с подписью на 220px, а
+ * внутри ui/views/diag.js кладёт свои .field с такой же колонкой. Две колонки по
+ * 220px плюс отступы требовали 586px там, где раздел получал 580 — на 800×600
+ * появлялся горизонтальный скролл. Внутри узкой колонки подпись и плашка встают
+ * друг под другом: места на две колонки там нет ни при каком экране. */
+.field .field {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap-1);
+  padding: var(--gap-1) 0;
+  border-bottom: 0;
+}
+
+.field .field + .field { border-top: 1px solid var(--outline-variant); }
+
+.field label { color: var(--text-muted); }
+
+/* Объяснение под полем, а не рядом: длинный текст не должен сжимать поле. */
+.field .why {
+  grid-column: 2;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+
+/* Флажок не растягивается на всю колонку. */
+.field input[type="checkbox"] { width: auto; justify-self: start; }
+.field input[type="number"] { max-width: 140px; }
+
+/* ---------- Уведомление ---------- */
+
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--gap-6);
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: 480px;
+  padding: var(--gap-2) var(--gap-3);
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+}
+
+#toast[hidden] { display: none; }
+
+/* ---------- Узкие окна ---------- */
+
+@media (max-width: 660px) {
+  #deck { grid-template-columns: 1fr; }
+
+  #deckNav {
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--outline-variant);
+  }
+
+  .field { grid-template-columns: 1fr; }
+  .field .why { grid-column: 1; }
+}

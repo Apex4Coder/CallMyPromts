@@ -1,0 +1,228 @@
+/* ui/styles/layouts.css — три раскладки окна выбора.
+ *
+ * Требование: REQ-UI-LAYOUT (docs/SPEC.md §7). Макеты: docs/UI-SPEC.md §2.
+ * Тест: tests/e2e/layouts.spec.mjs.
+ *
+ * DOM у всех трёх раскладок ОДИН и тот же (контракт §3.1) — различается только
+ * CSS. Поэтому смена раскладки не может сломать E2E-тесты и не требует
+ * перерисовки логики.
+ *
+ * Журнал буфера и окно управления — в ui/styles/panels.css.
+ */
+
+@import url("/styles/panels.css");
+
+/* ---------- Общий каркас окна выбора ---------- */
+
+#picker {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+/* Границы ВНУТРИ окна — `--outline-variant`: они разделяют части одной
+ * поверхности и ничего не обозначают. Рамка самого окна выше — `--outline`,
+ * потому что по ней окно узнаётся (ui/styles/tokens.css). */
+#pickerHead {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  padding: var(--gap-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/* Поле поиска: высота не меньше 32px.
+ *
+ * Дефект найден инвариантом I2 (tests/e2e/geometry.mjs): при `padding: 0` высота
+ * бралась от строки шрифта и составляла 22px на всех размерах окна и во всех темах.
+ * Поле работало — но попасть в него курсором на ходу труднее, чем кажется, и это
+ * ровно тот класс дефектов, который человек чувствует, а прежние 162 теста не
+ * проверяли: они смотрели данные, а не геометрию.
+ *
+ * 32px — минимум удобной цели нажатия из методички (gld/ui-contract.txt §1.5).
+ * `min-height`, а не `height`: при увеличенном масштабе шрифта поле обязано расти. */
+#pickerSearch {
+  border: 0;
+  background: transparent;
+  font-size: var(--fs-h2);
+  min-height: 32px;
+  padding: var(--gap-1) 0;
+}
+
+#pickerSearch:focus { outline: none; }
+#pickerHead:focus-within { background: var(--surface-2); }
+
+#pickerBody {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+
+#pickerList {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: var(--gap-1) 0;
+  list-style: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#pickerHints {
+  display: flex;
+  gap: var(--gap-3);
+  padding: var(--gap-2) var(--gap-3);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+
+/* ---------- Строка промпта ---------- */
+
+.row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto auto auto;
+  align-items: center;
+  gap: var(--gap-2);
+  padding: var(--row-pad) var(--gap-3);
+  cursor: pointer;
+}
+
+.row .digit {
+  font-family: var(--mono);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.row .name { min-width: 0; overflow-wrap: anywhere; }
+.row .group { color: var(--text-muted); font-size: var(--fs-small); }
+
+.row:hover { background: var(--surface-3); }
+
+/* Полоса слева у выбранной строки: box-shadow внутрь не сдвигает текст и не
+ * меняет высоту, поэтому выбор не вызывает reflow. */
+.row[aria-selected="true"] {
+  background: var(--surface-sel);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.row.is-broken { opacity: 0.75; cursor: not-allowed; }
+.row.is-broken .name { text-decoration: line-through; text-decoration-thickness: 1px; }
+
+#pinnedHead,
+.group-head {
+  padding: var(--gap-2) var(--gap-3) var(--gap-1);
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+#pickerSplit {
+  height: 1px;
+  margin: var(--gap-1) var(--gap-3);
+  background: var(--outline-variant);
+  border: 0;
+}
+
+/* ---------- Пустое состояние ----------
+ * Всегда причина и следующее действие: «0 промптов» без объяснения — молчание
+ * (docs/UI-SPEC.md §5).
+ */
+
+#pickerEmpty,
+#clipsEmpty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+  align-items: flex-start;
+  padding: var(--gap-6) var(--gap-3);
+  color: var(--text-muted);
+}
+
+/* ---------- Панель превью ---------- */
+
+#pickerPreview {
+  width: 400px;
+  flex: 0 0 400px;
+  min-width: 0;
+  padding: var(--gap-3);
+  border-left: 1px solid var(--outline-variant);
+  overflow-y: auto;
+}
+
+#previewTitle { font-size: var(--fs-h2); font-weight: 650; margin: 0 0 var(--gap-1); }
+#previewMeta { display: flex; flex-wrap: wrap; gap: var(--gap-2); margin-bottom: var(--gap-2); }
+
+#previewBody {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--fs-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- palette: одна колонка, 640×420 ---------- */
+
+[data-layout="palette"] #picker { width: 640px; max-height: 420px; }
+[data-layout="palette"] #pickerPreview { display: none; }
+
+/* ---------- panels: две колонки, 900×560 ---------- */
+
+[data-layout="panels"] #picker { width: 900px; max-height: 560px; }
+[data-layout="panels"] #pickerList { flex: 0 0 320px; border-right: 1px solid var(--outline-variant); }
+[data-layout="panels"] #pickerPreview { display: block; flex: 1; width: auto; border-left: 0; }
+
+/* ---------- hybrid: palette + раскрываемое превью ---------- */
+
+[data-layout="hybrid"] #picker { width: 640px; max-height: 420px; }
+[data-layout="hybrid"] #pickerPreview { display: none; }
+[data-layout="hybrid"] #picker[data-expanded="true"] { width: 1040px; }
+[data-layout="hybrid"] #picker[data-expanded="true"] #pickerPreview { display: block; }
+
+/* ---------- Позиция окна ---------- */
+
+.stage {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--gap-4);
+}
+
+[data-position="center"] .stage { align-items: center; }
+[data-position="top"] .stage { align-items: flex-start; padding-top: 25vh; }
+/* cursor: точное место ставит мост окном ОС; в браузере ведёт себя как top. */
+[data-position="cursor"] .stage { align-items: flex-start; padding-top: 25vh; }
+
+/* ---------- Узкие окна ----------
+ * Раскладки в 900 и 1040 px не должны давать горизонтальный скролл на 800×600
+ * (утверждение U-15).
+ */
+
+@media (max-width: 1060px) {
+  [data-layout="hybrid"] #picker[data-expanded="true"] { width: 100%; }
+}
+
+@media (max-width: 920px) {
+  [data-layout="panels"] #picker { width: 100%; }
+  [data-layout="panels"] #pickerList { flex: 0 0 40%; }
+}
+
+@media (max-width: 660px) {
+  #picker { width: 100% !important; }
+  #pickerBody { flex-direction: column; }
+
+  #pickerPreview {
+    width: auto;
+    flex: 1;
+    border-left: 0;
+    border-top: 1px solid var(--outline-variant);
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "call-my-prompts",
+  "version": "1.0.0",
+  "description": "CallMyPromts — библиотека промптов и журнал буфера обмена с вызовом по горячей клавише. Ноль внешних зависимостей в рантайме.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "app": "node bridge/index.mjs",
+    "start": "node bridge/index.mjs",
+    "server": "node server/index.mjs",
+    "deck": "node bridge/index.mjs",
+    "gate": "node gates/verify.mjs",
+    "arch": "node gates/arch-check.mjs",
+    "chunk": "node gates/chunk-check.mjs",
+    "trace": "node gates/trace-check.mjs",
+    "secret": "node gates/secret-check.mjs",
+    "migrate:report": "node legacy/migrate.mjs --report",
+    "migrate:apply": "node legacy/migrate.mjs --apply",
+    "test:unit": "node --test \"tests/unit/*.test.mjs\"",
+    "test:api": "node --test \"tests/integration/*.test.mjs\"",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test:unit && npm run test:api && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}
