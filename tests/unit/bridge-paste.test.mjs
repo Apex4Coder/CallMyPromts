@@ -117,7 +117,9 @@ test('журнал буфера запоминает окно так же', () =
 });
 
 test('интерфейс открывается отдельным окном приложения, а не вкладкой браузера', () => {
-  const open = ahkFn(SCRIPT, 'Open').text;
+  const entry = ahkFn(SCRIPT, 'Open').text;
+  assert.match(entry, /OpenOwnedPanel\(hash/, 'публичный вход обязан вызвать проверенный запуск');
+  const open = ahkFn(SCRIPT, 'OpenOwnedPanel').text;
 
   assert.match(open, /--app=/, 'Edge должен запускаться в режиме приложения');
   assert.match(open, /FindEdge\(\)/, 'путь к Edge должен определяться явно');

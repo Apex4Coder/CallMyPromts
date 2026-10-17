@@ -206,7 +206,9 @@ test('незарегистрированная клавиша докладыва
 test('URL открывается напрямую без cmd.exe', () => {
   // Промежуточный `cmd /c start` добавляет второй парсер кавычек и способен
   // исказить URL. AutoHotkey умеет передать адрес оболочке Windows напрямую.
-  const open = ahkFn(SCRIPT, 'Open').text;
+  const entry = ahkFn(SCRIPT, 'Open').text;
+  assert.match(entry, /OpenOwnedPanel\(hash/, 'публичный вход обязан вызвать проверенный запуск');
+  const open = ahkFn(SCRIPT, 'OpenOwnedPanel').text;
 
   assert.match(open, /url\s*:=\s*"http:\/\/127\.0\.0\.1:/);
   assert.match(open, /Run url/);
